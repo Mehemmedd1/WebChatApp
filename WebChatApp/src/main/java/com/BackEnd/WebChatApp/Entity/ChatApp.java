@@ -9,7 +9,7 @@ import org.springframework.data.annotation.Id;
 @ToString
 public class ChatApp {
     @Id
-    private Long d;
+    private Long id;
 
     private String sender;
     private String message;
