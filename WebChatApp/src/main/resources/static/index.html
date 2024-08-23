@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Chat App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.4.0/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript">
+        var stompClient = null;
+        var baseAddress = 'http://localhost:8080';
+
+        function setConnected(connected) {
+            document.getElementById('connect').style.display = connected ? 'none' : 'inline-block';
+            document.getElementById('disconnect').style.display = connected ? 'inline-block' : 'none';
+            document.getElementById('conversationDiv').style.visibility = connected ? 'visible' : 'hidden';
+            document.getElementById('response').innerHTML = '';
+        }
+
+        function connect() {
+            var socket = new SockJS(baseAddress + '/chat');
+            stompClient = Stomp.over(socket);
+            stompClient.connect({}, function (frame) {
+                setConnected(true);
+                console.log('Connected: ' + frame);
+                stompClient.subscribe('/topic', function (message) {
+                    handleReceivedMessage(JSON.parse(message.body));
+                });
+            }, function (error) {
+                console.log('STOMP error: ' + error);
+            });
+        }
+
+        function disconnect() {
+            if (stompClient != null) {
+                stompClient.disconnect();
+            }
+            setConnected(false);
+            console.log("Disconnected");
+        }
+
+        function sendMessage() {
+            var from = document.getElementById('from').value;
+            var text = document.getElementById('text').value;
+            stompClient.send("/app/chat", {},
+                JSON.stringify({ 'sender': from, 'message': text }));
+            document.getElementById('text').value = ''; // Clear the input after sending the message
+        }
+
+        function handleReceivedMessage(message) {
+            var response = document.getElementById('response');
+            var p = document.createElement('p');
+            p.style.wordWrap = 'break-word';
+            p.appendChild(document.createTextNode(message.sender + ": " + message.message));
+            response.appendChild(p);
+        }
+
+        // Send message on Enter key press
+        function checkEnterKey(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+                event.preventDefault(); // Prevent default behavior (e.g., form submission)
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-100 h-screen flex items-center justify-center">
+<div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-md">
+    <div class="mb-4">
+        <input type="text" id="from" placeholder="Kullanıcı Adı"
+               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+    </div>
+    <div class="flex justify-between items-center mb-4">
+        <button id="connect" onclick="connect();"
+                class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg focus:outline-none">Bağlan</button>
+        <button id="disconnect" onclick="disconnect();" style="display:none;"
+                class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg focus:outline-none">
+            Çıkış
+        </button>
+    </div>
+    <div id="conversationDiv" style="visibility: hidden;">
+        <div class="flex mb-4">
+            <input type="text" id="text" placeholder="Mesaj.." onkeydown="checkEnterKey(event)"
+                   class="w-full px-4 py-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <button id="sendMessage" onclick="sendMessage();"
+                    class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-r-lg focus:outline-none">Gönder</button>
+        </div>
+        <div id="response" class="bg-gray-100 p-4 rounded-lg shadow-inner h-64 overflow-y-auto"></div>
+    </div>
+</div>
+</body>
+
+</html>
